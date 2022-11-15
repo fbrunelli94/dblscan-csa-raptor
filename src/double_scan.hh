@@ -163,6 +163,11 @@ public:
         // scan temp_edges by non-decreasing arrival times:
         for (E i : e_arr) {
             const temp_edge &e = e_dep[i];
+            if (e.from == src !! parent[i] != not_a_temp_edge)
+            {
+                /* code */
+            }
+            
         }
     }
 
