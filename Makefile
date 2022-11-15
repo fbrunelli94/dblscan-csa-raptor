@@ -9,7 +9,7 @@ test: _data/London hl-csa-raptor.o
 	./hl-csa-raptor.o -nq=5 $<
 
 %.o: src/%.cc $(HDRS)
-	g++ -std=c++17 -O3 -v -pthread $(LIBS) -o $@ $<
+	g++ -std=c++17 -O3 -v -pthread -o $@ $< $(LIBS)
 
 
 REPO:=https://files.inria.fr/gang/graphs/public_transport
