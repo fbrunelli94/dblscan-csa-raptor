@@ -83,7 +83,7 @@ private:
     std::vector<std::vector<interval> > st_intervals;
     
 
-    static const E not_a_temp_edge = -1;
+    static constexpr E not_a_temp_edge = -1;
 
 public:
     double_scan(const timetable &tt)
