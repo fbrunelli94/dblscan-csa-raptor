@@ -8,20 +8,20 @@
 #include "timetable.hh"
 
 
-typedef timetable::ST ST;
-typedef timetable::S S;
-typedef timetable::R R;
-typedef timetable::T T;
+typedef timetable::ST ST; // stations
+typedef timetable::S S; // stops
+typedef timetable::R R; // routes
+typedef timetable::T T; // time
     
 typedef int TR; // trips
 
 struct temp_edge {
-    TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan
-    ST from, to;
-    T dep, arr;
-    int index;
+    const TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan
+    const ST from, to;
+    const T dep, arr;
+    const int index_in_trip;
     temp_edge(TR tr, ST u, ST v, T d, T a, int i)
-        : trip(tr), from(u), to(v), dep(d), arr(a), index(i) {}
+        : trip(tr), from(u), to(v), dep(d), arr(a), index_in_trip(i) {}
 };
 
 
@@ -53,12 +53,17 @@ private:
 
 
 
+    std::vector<temp_edge> e_unsorted; // temp_edges unsorted
+    std::vector<int> e_dep_aux; // auxiliary vector to build e_dep
     std::vector<temp_edge> e_dep; // temp_edges ordered by from station and dep time
+    typedef int E; // index of a temp_edge in e_dep
+    std::vector<E> e_arr; // temp_edges ordered by arrival time stored through indexes of temporal edges stored in e_dep
+
     std::vector<std::pair<R, int> > trip_route;
 
-    typedef int E; // index of a temp_edge in e_dep
+    
 
-    std::vector<E> e_arr; // temp_edges ordered by arrival time
+    
 
     TR n_tr;
     E n_edg;
@@ -88,22 +93,21 @@ private:
 public:
     double_scan(const timetable &tt)
         : ttbl(tt), n_tr(0), n_edg(0) {
-        
-        // create temp_edges and store them in e_dep:
+        // create temp_edges and store them in e_unsorted:
         for (R r = 0; r < ttbl.n_r; ++r) {
             n_tr += tt.trips_of[r].size();
             for (int i = 0; i < tt.trips_of[r].size(); ++i) {
                 n_edg += tt.trips_of[r][i].size() - 1;
             }
         }
-        e_dep.reserve(n_edg);
+        e_unsorted.reserve(n_edg);
         trip_route.reserve(n_tr);
         int i_tr = 0;
         for (R r = 0; r < ttbl.n_r; ++r) {
             const std::vector<S> &stops = tt.route_stops[r];
             for (int i = 0; i < tt.trips_of[r].size(); ++i) {
                 for (int j = 1; j < tt.trips_of[r][i].size(); ++j) {
-                    e_dep.emplace_back(i_tr,
+                    e_unsorted.emplace_back(i_tr,
                                        tt.stop_station[stops[j-1]],
                                        tt.stop_station[stops[j]],
                                        tt.trips_of[r][i][j-1].second,
@@ -114,12 +118,27 @@ public:
                 ++i_tr;
             }
         }
+        //create e_dep:
+        e_dep_aux.reserve(n_edg);
+        for (int i = 0; i < n_edg; ++i) { e_dep_aux.push_back(i); }
+        std::sort(e_dep_aux.begin(), e_dep_aux.end(),
+                [this](int i, int j) {
+                    const temp_edge &c = e_unsorted[i];
+                    const temp_edge &d = e_unsorted[j];
+                    if (c.from != d.from) return c.from < d.from; //lexicographical order
+                      return c.dep < d.dep;                      
+                    });
+        e_dep.reserve(n_edg);
+        for (int i = 0; i < n_edg; ++i) { e_dep.push_back(e_unsorted[e_dep_aux[i]]); }
+        //here we could delete e_unsorted, how?
+        /*
+        old sort function that does not work with const members in temp_edge:
         std::sort(e_dep.begin(), e_dep.end(),
                   [](const temp_edge &c, const temp_edge &d) {
-                      if (c.from != d.from) return c.from < d.from;
+                      if (c.from != d.from) return c.from < d.from; //lexicographical order
                       return c.dep < d.dep;
                   });
-
+        */
         // create e_arr:
         e_arr.reserve(n_edg);
         for (E i = 0; i < n_edg; ++i) { e_arr.push_back(i); }
@@ -131,7 +150,7 @@ public:
                       // c.arr = d.arr
                       // Be careful to 0 delay temp_edges:
                       // Heuristic for zero-acyclicity (not sufficient):
-                      if (c.trip == d.trip) return c.index < d.index;
+                      if (c.trip == d.trip) return c.index_in_trip < d.index_in_trip;
                       // 0 delay temp_edge after:
                       if (c.dep != c.arr) return true;
                       if (d.dep != d.arr) return false;
@@ -147,7 +166,13 @@ public:
             best_cost.emplace_back();
             parent.push_back(not_a_temp_edge);
         }
-
+        //initialize st_indexes:
+        ST tmp_st = -1;
+        for (int i = 0; i < n_edg; ++i) {
+            if (e_dep[i].from != tmp_st){
+                
+            }
+        }
     }
 
 
@@ -159,13 +184,15 @@ public:
 
         // initialize
         for (int i = 0; i < n_edg; ++i) { parent[i] = not_a_temp_edge; }
-
+        
         // scan temp_edges by non-decreasing arrival times:
         for (E i : e_arr) {
             const temp_edge &e = e_dep[i];
             if (e.from == src || parent[i] != not_a_temp_edge)
             {
-                /* write algorithm */
+                
+
+                if (e.to == dst) return e.arr;
             }
             
         }

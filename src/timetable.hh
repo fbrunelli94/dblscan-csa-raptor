@@ -43,6 +43,9 @@ public:
     typedef mgraph<ST, T> graph;
 
     size_t n_st, n_tr, n_s, n_r, n_h; // number of stations, transfer nodes, stops, routes, hubs
+
+    //add more comments: for example stations are int from 0 to n_st-1
+
     std::vector<std::vector<S> > station_stops; // stops of a station
     std::vector<id> station_id, hub_id; // id from the gtfs data
     std::vector<ST> stop_station;
