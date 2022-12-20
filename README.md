@@ -1,7 +1,7 @@
-# hl-csa-raptor
-Hub labeling based versions of CSA and RAPTOR supporting unrestricted walking
+# dblscan-csa-raptor
+Implementation in C++ of dblscan, a linear time algorithm that computes optimal temporal walks under waiting time constraints.
 
-An implementation in C++ of HLCSA and HLRaptor which are variants of Connection Scan Algorithm (CSA) and RAPTOR supporting unrestricted walking through the use of a hub labeling of the footpath graph.
+From the original upstream repository: an implementation in C++ of HLCSA and HLRaptor which are variants of Connection Scan Algorithm (CSA) and RAPTOR supporting unrestricted walking through the use of a hub labeling of the footpath graph.
 
 Associated data can be found at this [graph repository](https://files.inria.fr/gang/graphs/public_transport/).
 
@@ -20,6 +20,8 @@ make
 make test
 ```
 
-Author : Laurent Viennot, Inria 2019
+Author of the original upstream repository: Laurent Viennot, Inria 2019. [Acknowledgement to Duc-Minh Phan for implementing a preliminary version of the CSA part.]
 
-Acknowledgement to Duc-Minh Phan for implementing a preliminary version of the CSA part.  
+Authors of blscan implementation: Filippo Brunelli, Laurent Vienont Inria 2022.
+
+
