@@ -150,7 +150,7 @@ int main (int argc, char **argv) {
     // */
 
 
-    // make andom successful queries
+    // make random successful queries
     if (get_opt(argc, argv, "-random-queries=", "") != "") {
         n_q = std::stoi(get_opt(argc, argv, "-random-queries=", "1000"));
         int max_delay = std::stoi(get_opt(argc, argv, "-max-delay=",

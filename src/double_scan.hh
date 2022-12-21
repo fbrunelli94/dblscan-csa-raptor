@@ -16,7 +16,7 @@ typedef timetable::T T; // time
 typedef int TR; // trips
 
 struct temp_edge {
-    const TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan (actually finally we said we can using prev_in_trip, but need to check carefully)
+    const TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan \fb{actually finally we said we can using prev_in_trip, but need to check carefully}
     const ST from, to;
     const T dep, arr;
     const int index_in_trip;
@@ -115,19 +115,20 @@ public:
                 ++i_tr;
             }
         }
-        //create e_dep:
+        // create e_dep:
         e_dep_aux.reserve(n_edg);
         for (int i = 0; i < n_edg; ++i) { e_dep_aux.push_back(i); }
         std::sort(e_dep_aux.begin(), e_dep_aux.end(),
                 [this](int i, int j) {
                     const temp_edge &c = e_unsorted[i];
                     const temp_edge &d = e_unsorted[j];
-                    if (c.from != d.from) return c.from < d.from; //lexicographical order
+                    if (c.from != d.from) return c.from < d.from; // lexicographical order
                       return c.dep < d.dep;                      
                     });
         e_dep.reserve(n_edg);
         for (int i = 0; i < n_edg; ++i) { e_dep.push_back(e_unsorted[e_dep_aux[i]]); }
-        //here we could delete e_unsorted, how?
+        // here we could delete e_unsorted, how?
+
         /*
         old sort function that does not work with const members in temp_edge:
         std::sort(e_dep.begin(), e_dep.end(),
@@ -136,6 +137,7 @@ public:
                       return c.dep < d.dep;
                   });
         */
+
         // create e_arr:
         e_arr.reserve(n_edg);
         for (E i = 0; i < n_edg; ++i) { e_arr.push_back(i); }
@@ -176,7 +178,7 @@ public:
                 tmp_first = i;
             }
         }
-        st_indexes[tmp_st] = e_dep_indexes(tmp_first,n_edg-1,tmp_first,tmp_first-1);
+        st_indexes[tmp_st] = e_dep_indexes(tmp_first,n_edg-1,tmp_first,tmp_first-1); // initialize the indexes for the last station
         
     }
 
@@ -193,21 +195,21 @@ public:
         // scan temp_edges by non-decreasing arrival times:
         for (E i : e_arr) {
             const temp_edge &e = e_dep[i];
-            if (e.from == src || parent[i] != not_a_temp_edge)
+            if (e.from == src || parent[i] != not_a_temp_edge) // check if e can start or extend a temporal walk
             {
-                while (e_dep[st_indexes[e.to].right].dep <= e.arr + max_waiting_time && st_indexes[e.to].right <= st_indexes[e.to].last)
+                while (e_dep[st_indexes[e.to].right].dep <= e.arr + max_waiting_time && st_indexes[e.to].right <= st_indexes[e.to].last) // process edges departing from e.from, with dep time not greater than e.arr + max_waiting_time
                 {
-                    if (e_dep[st_indexes[e.to].right].dep >= e.arr + min_waiting_time)
+                    if (e_dep[st_indexes[e.to].right].dep >= e.arr + min_waiting_time) // check if the processed ege extends e by checking if its departure time is not les than e.arr + min_waiting_time
                     {
-                        parent[st_indexes[e.to].right] =i;
+                        parent[st_indexes[e.to].right] =i; // the processed edge extends e, thus we can set e as its parent
                     }
                     st_indexes[e.to].right++;
                 }            
-                if (e.to == dst) return e.arr;
+                if (e.to == dst) return e.arr; // the destination has been reached
             }
             
         }
-        return ttbl.t_max; //what is the best value to return if it was not reachable?
+        return ttbl.t_max; // what is the best value to return if the destination was not reachable?
     }
 
     C get_best_cost(E i) {

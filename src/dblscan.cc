@@ -95,7 +95,7 @@ int main (int argc, char **argv) {
             dir+"walk_and_transfer_outhubs.gr.gz",
             dir+"transfers.csv.gz", true};
     //dir+"walking_and_transfers.gr", t_from, t_to};
-    std::cerr << ttbl.n_r <<" routes, "<< ttbl.n_st <<" sations, "
+    std::cerr << ttbl.n_r <<" routes, "<< ttbl.n_st <<" stations, "
               << ttbl.n_s <<" stops\n";
     main_log.cerr(t) << "timetable\n";
     t = main_log.lap();
@@ -143,7 +143,7 @@ int main (int argc, char **argv) {
     // */
 
 
-    // make andom successful queries
+    // make random successful queries
     if (get_opt(argc, argv, "-random-queries=", "") != "") {
         n_q = std::stoi(get_opt(argc, argv, "-random-queries=", "1000"));
         int max_delay = std::stoi(get_opt(argc, argv, "-max-delay=",
