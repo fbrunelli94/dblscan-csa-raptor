@@ -5,8 +5,11 @@ LIBS:=-lz
 main: dblscan.o
 	@echo "This is a compilation test of dblscan.cc"
 
-#test: _data/London hl-csa-raptor.o
-#	./hl-csa-raptor.o -nq=5 $<
+test: _data/London hl-csa-raptor.o
+	./hl-csa-raptor.o -nq=5 $<
+
+#test: _data/London dblscan.o
+#	./dblscan.o -nq=5 $<
 
 %.o: src/%.cc $(HDRS)
 	g++ -std=c++17 -O3 -v -pthread -o $@ $< $(LIBS)
