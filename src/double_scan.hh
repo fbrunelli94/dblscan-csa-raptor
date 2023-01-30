@@ -15,12 +15,12 @@ typedef timetable::T T; // time
     
 typedef int TR; // trips
 
-struct temp_edge {
-    const TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan \fb{actually finally we said we can using prev_in_trip, but need to check carefully}
-    const ST from, to;
-    const T dep, arr;
-    const int index_in_trip;
-    temp_edge(TR tr, ST u, ST v, T d, T a, int i)
+struct t_edge {
+    TR trip; // for debugging, cannot use it to vary minimum waiting time in double_scan \fb{actually finally we said we can using prev_in_trip, but need to check carefully}
+    ST from, to;
+    T dep, arr;
+    int index_in_trip;
+    t_edge(TR tr, ST u, ST v, T d, T a, int i)
         : trip(tr), from(u), to(v), dep(d), arr(a), index_in_trip(i) {}
 };
 
@@ -30,7 +30,7 @@ struct cost_empty { // EAT queries do not use costs
     cost_empty() {
     }
     
-    cost_empty(const temp_edge &edg) {
+    cost_empty(const t_edge &edg) {
     }
     
     friend bool operator<(const cost_empty &e, const cost_empty &f) {
@@ -44,18 +44,16 @@ struct cost_empty { // EAT queries do not use costs
 
 
 
-template<class C = cost_empty> // cost type, must override < and + operators, and have a constructor from a temp_edge as well as a default constructor
+template<class C = cost_empty> // cost type, must override < and + operators, and have a constructor from a t_edge as well as a default constructor
 
 class double_scan {
 
 private:
     const timetable &ttbl;
-
-    std::vector<temp_edge> e_unsorted; // temp_edges unsorted
-    std::vector<int> e_dep_aux; // auxiliary vector to build e_dep
-    std::vector<temp_edge> e_dep; // temp_edges ordered by from station and dep time
-    typedef int E; // index of a temp_edge in e_dep
-    std::vector<E> e_arr; // temp_edges ordered by arrival time stored through indexes of temporal edges stored in e_dep
+   
+    std::vector<t_edge> e_dep; // t_edges ordered by from_station and dep_time
+    typedef int E; // index of a t_edge in e_dep
+    std::vector<E> e_arr; // t_edges ordered by arrival time stored through indexes of temporal edges stored in e_dep
 
     std::vector<std::pair<R, int> > trip_route;
  
@@ -67,7 +65,7 @@ private:
     std::vector<C> best_cost;
     std::vector<E> parent;
     std::vector<C> min_cost;
-    // TODO: std::vector<E> prev_in_trip; // next temp_edge in the trip
+    // TODO: std::vector<E> prev_in_trip; // next t_edge in the trip
 
     struct e_dep_indexes {
         E first, last; // first/last edge from a station. I would like them to be const but it makes it "ugly" to properly initialize st_indexes (since I would like to handle the in which there exists stops with no outgoing edges)
@@ -85,26 +83,26 @@ private:
     std::vector<std::vector<interval> > st_intervals;
     
 
-    static constexpr E not_a_temp_edge = -1;
+    static constexpr E not_a_t_edge = -1;
 
 public:
     double_scan(const timetable &tt)
         : ttbl(tt), n_tr(0), n_edg(0) {
-        // create temp_edges and store them in e_unsorted:
+        // create e_dep:
         for (R r = 0; r < ttbl.n_r; ++r) {
             n_tr += tt.trips_of[r].size();
             for (int i = 0; i < tt.trips_of[r].size(); ++i) {
                 n_edg += tt.trips_of[r][i].size() - 1;
             }
         }
-        e_unsorted.reserve(n_edg);
+        e_dep.reserve(n_edg);
         trip_route.reserve(n_tr);
         int i_tr = 0;
         for (R r = 0; r < ttbl.n_r; ++r) {
             const std::vector<S> &stops = tt.route_stops[r];
             for (int i = 0; i < tt.trips_of[r].size(); ++i) {
                 for (int j = 1; j < tt.trips_of[r][i].size(); ++j) {
-                    e_unsorted.emplace_back(i_tr,
+                    e_dep.emplace_back(i_tr,
                                        tt.stop_station[stops[j-1]],
                                        tt.stop_station[stops[j]],
                                        tt.trips_of[r][i][j-1].second,
@@ -115,42 +113,26 @@ public:
                 ++i_tr;
             }
         }
-        // create e_dep:
-        e_dep_aux.reserve(n_edg);
-        for (int i = 0; i < n_edg; ++i) { e_dep_aux.push_back(i); }
-        std::sort(e_dep_aux.begin(), e_dep_aux.end(),
-                [this](int i, int j) {
-                    const temp_edge &c = e_unsorted[i];
-                    const temp_edge &d = e_unsorted[j];
-                    if (c.from != d.from) return c.from < d.from; // lexicographical order
-                      return c.dep < d.dep;                      
-                    });
-        e_dep.reserve(n_edg);
-        for (int i = 0; i < n_edg; ++i) { e_dep.push_back(e_unsorted[e_dep_aux[i]]); }
-        // here we could delete e_unsorted, how?
-
-        /*
-        old sort function that does not work with const members in temp_edge:
         std::sort(e_dep.begin(), e_dep.end(),
-                  [](const temp_edge &c, const temp_edge &d) {
-                      if (c.from != d.from) return c.from < d.from; //lexicographical order
+                  [](const t_edge &c, const t_edge &d) {
+                      if (c.from != d.from) return c.from < d.from; // lexicographical order
                       return c.dep < d.dep;
                   });
-        */
+        
 
         // create e_arr:
         e_arr.reserve(n_edg);
         for (E i = 0; i < n_edg; ++i) { e_arr.push_back(i); }
         std::sort(e_arr.begin(), e_arr.end(),
                   [this](E i, E j) {
-                      const temp_edge &c = e_dep[i];
-                      const temp_edge &d = e_dep[j];
+                      const t_edge &c = e_dep[i];
+                      const t_edge &d = e_dep[j];
                       if (c.arr != d.arr) return c.arr < d.arr;
                       // c.arr = d.arr
-                      // Be careful to 0 delay temp_edges:
+                      // Be careful to 0 delay t_edges:
                       // Heuristic for zero-acyclicity (not sufficient):
                       if (c.trip == d.trip) return c.index_in_trip < d.index_in_trip;
-                      // 0 delay temp_edge after:
+                      // 0 delay t_edge after:
                       if (c.dep != c.arr) return true;
                       if (d.dep != d.arr) return false;
                       return c.trip < d.trip;
@@ -160,10 +142,10 @@ public:
         edge_cost.reserve(n_edg);
         best_cost.reserve(n_edg);
         parent.reserve(n_edg);
-        for (temp_edge edg : e_dep) {
+        for (t_edge edg : e_dep) {
             edge_cost.emplace_back(edg);
             best_cost.emplace_back();
-            parent.push_back(not_a_temp_edge);
+            parent.push_back(not_a_t_edge);
         }
         
         // initialize st_indexes:
@@ -182,7 +164,7 @@ public:
         
     }
 
-
+    // This function is similar to the one in "SAND paper". The index 'right' here, plays the role of p_v in the paper.
     T earliest_arrival_time(const ST src, const ST dst, const T t_dep,
                             const T min_waiting_time,
                             const T max_waiting_time) {
@@ -190,21 +172,41 @@ public:
         assert(max_waiting_time > 0);
 
         // initialize parents
-        for (int i = 0; i < n_edg; ++i) { parent[i] = not_a_temp_edge; }
+        for (E i = 0; i < n_edg; ++i) { parent[i] = not_a_t_edge; }
+
+        // initialize left and right indexes
+        for (E i = 0; i < n_edg; i++) 
+        {
+            st_indexes[i].left = st_indexes[i].first;
+            st_indexes[i].right = st_indexes[i].first-1;
+        }       
         
-        // scan temp_edges by non-decreasing arrival times:
+        
+        // scan t_edges by non-decreasing arrival times:
         for (E i : e_arr) {
-            const temp_edge &e = e_dep[i];
-            if (e.from == src || parent[i] != not_a_temp_edge) // check if e can start or extend a temporal walk
+            const t_edge &e = e_dep[i];
+            if (e.from == src || parent[i] != not_a_t_edge) // check if e can start or extend a temporal walk
             {
-                while (e_dep[st_indexes[e.to].right].dep <= e.arr + max_waiting_time && st_indexes[e.to].right <= st_indexes[e.to].last) // process edges departing from e.from, with dep time not greater than e.arr + max_waiting_time
+                // compute an interval of edges [l,r] departing from e.to that extend e
+                E l = st_indexes[e.to].right; // l is the first index of an edge with departure time >= e.arr + min_waiting_time
+                E last = st_indexes[e.to].last; 
+
+                while (e_dep[l].dep < e.arr + min_waiting_time && l <= last)
                 {
-                    if (e_dep[st_indexes[e.to].right].dep >= e.arr + min_waiting_time) // check if the processed ege extends e by checking if its departure time is not les than e.arr + min_waiting_time
-                    {
-                        parent[st_indexes[e.to].right] =i; // the processed edge extends e, thus we can set e as its parent
-                    }
-                    st_indexes[e.to].right++;
-                }            
+                    l++;
+                }
+                l++;
+            
+                E r =l; // r is the last index of an edge with departure time <= e.arr + max_waiting_time
+
+                while (e_dep[r].dep < e.arr + max_waiting_time && r <= last)
+                {
+                    parent[r] =i;
+                    r++;
+                }
+
+                st_indexes[e.to].right = r; // update right to the last edge has been processed
+
                 if (e.to == dst) return e.arr; // the destination has been reached
             }
             
@@ -213,12 +215,12 @@ public:
     }
 
     C get_best_cost(E i) {
-        assert(parent[i] != not_a_temp_edge);
+        assert(parent[i] != not_a_t_edge);
         return best_cost[i];
     }
 
     C has_best_cost(E i) {
-        return parent[i] != not_a_temp_edge;
+        return parent[i] != not_a_t_edge;
     }
 };
 
@@ -235,7 +237,7 @@ public:
 
     typedef T cost; // Intended cost
 
-    cost intended_cost(const temp_edge &last_edge) {
+    cost intended_cost(const t_edge &last_edge) {
         assert(last_edge.arr == arr);
         return arr;
     }
@@ -243,7 +245,7 @@ public:
     cost_eat() : arr(std::numeric_limits<T>::max()) {
     }
     
-    cost_eat(const temp_edge &edg) : arr(edg.arr) {
+    cost_eat(const t_edge &edg) : arr(edg.arr) {
     }
     
     friend bool operator<(const cost_eat &e, const cost_eat &f) {
@@ -265,14 +267,14 @@ public:
 
     typedef T cost; // Intended cost
 
-    cost intended_cost(const temp_edge &last_edge) {
+    cost intended_cost(const t_edge &last_edge) {
         return last_edge.arr - dep;
     }
     
     cost_dur() : dep(std::numeric_limits<T>::min()) {
     }
     
-    cost_dur(const temp_edge &edg) : dep(edg.dep) {
+    cost_dur(const t_edge &edg) : dep(edg.dep) {
     }
     
     friend bool operator<(const cost_dur &e, const cost_dur &f) {
